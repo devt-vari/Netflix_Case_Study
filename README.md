@@ -1,4 +1,4 @@
-# Netflix_Case_Study
+# Netflix_Case_Study_using_Python_Libraries
 Business Case: Netflix - Data Exploration and Visualisation
 Solved
 Mindset
