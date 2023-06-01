@@ -1,0 +1,388 @@
+# Exploratory Data Analytics on Netflix Data
+
+## Load the Packages and Data
+
+import pandas as pd                # for dataframe and manipulation
+import numpy as np                 # for numerical computing
+import seaborn as sns              # for graphs and data visualization
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+
+netflix = pd.read_csv(r"C:\Users\tiwbrahm\Downloads\netflix.csv")
+
+netflix.head(2)
+
+netflix.tail(2)
+
+netflix.shape
+
+netflix.size
+
+netflix.columns
+
+netflix.dtypes
+
+netflix.info()
+
+netflix.describe()
+
+netflix.describe(include='all')
+
+netflix.nunique()
+
+## Data Cleaning (Handling missing & duplicate values)
+
+# Find Missing Values
+netflix.isnull()
+
+missing = netflix.isnull().sum()  # Missing values
+missing
+
+missing1 = (netflix.isnull().sum()/len(netflix)*100)  # Missing values in %
+missing1
+
+# Missing Total with %
+Missed = pd.concat([missing,missing1],axis=1,keys=['Total','Missing%'])
+Missed
+
+# Heatmap to describe Null data in Netflix dataset
+sns.heatmap(netflix.isnull())
+plt.xticks(rotation=90)
+
+* From the above output we can see that director,cast & country columns contains maximum null values. 
+
+* Filling missing (Null) values for director,cast & country as "Unknown" for the missing directors.
+
+# making copy of dataset for changes
+netflix_copy = netflix.copy()
+netflix_copy.head(2)
+
+netflix_copy['director']
+
+netflix_copy['director'].fillna('Unknown',inplace=True)
+
+netflix_copy['cast']
+
+netflix_copy['cast'].fillna('Unknown',inplace=True)
+
+netflix_copy['country']
+
+netflix_copy['country'].fillna('Unknown',inplace=True)
+
+netflix_copy.head(2)
+
+* There are 3 more fields with missing values ('date_added', 'rating', 'duration'). 
+* Since the we have missing values less than 1%, we can remove these records for the analysis.
+
+netflix_copy.dropna(subset=['date_added','rating','duration'], inplace=True)
+
+netflix_copy.head()
+
+# Handling with duplicate rows
+
+netflix_copy[netflix_copy.duplicated()]    # To show duplicate rows
+
+netflix_copy.duplicated().sum()   # Count of duplicate rows
+
+* No duplicate rows are present in this dataset.
+
+netflix_copy.shape   # Size after cleaning
+
+## Exploratory Data Analysis
+
+netflix_copy.type.unique()
+
+* We can see that netflix have 69% movies while 30% TV Shows
+
+netflix_movies = netflix_copy[netflix_copy['type'] == 'Movie'].copy()
+netflix_shows = netflix_copy[netflix_copy['type'] == 'TV Show'].copy()
+
+netflix_movies.head(2)
+
+netflix_shows.head(2)
+
+#### Clean duration field in movies dataframe
+
+netflix_movies['duration'] = netflix_movies.duration.str.replace(' min','').astype(int)
+
+netflix_shows.rename(columns={'duration':'season'},inplace=True)
+
+netflix_shows.head(5)
+
+netflix_shows["season"] = netflix_shows.season.str.replace(" Seasons",'')
+netflix_shows["season"] = netflix_shows.season.str.replace(" Season",'').astype(int)
+
+netflix_shows.head()
+
+#### 1. Ratings of Movies and Seasons
+
+netflix_copy.rating.unique()
+
+plt.figure(figsize=(15,7))
+sns.countplot(netflix_copy,x=netflix_copy['rating'],hue=netflix_copy['type'])
+plt.show()
+
+Observation : 
+* Maximum count of ratings included TV-MA (Mature Audiences) and TV-14 (Parents strongly cautioned) for both Movies and TV shows
+* 17 types of ratings on netflix
+
+#### 2. Movies and TV shows released in every years
+
+#No. of movies released every year
+netflix_copy.groupby(['release_year'])['release_year'].count().sort_values(ascending=False)
+
+plt.figure(figsize=(35,12))
+sns.countplot(netflix_copy,x = netflix_copy.release_year,hue=netflix_copy.type)
+plt.xticks(rotation=90)
+plt.show()
+
+Observation:
+
+* Netflix touched its peak for making movies in 2018 and TV shows in 2020
+* From the above we can see that with passing years more movies are being made year by year
+* The above data shows that there is a sudden increase in the creation of movies in year 2016 as compared to year 2015
+
+#### 3. Most watched shows on the Netflix?
+
+netflix_copy.type.value_counts().to_frame('Value_count')
+
+sns.countplot(x=netflix_copy['type'])
+plt.xticks(rotation=90)
+
+# Pie chart to show value in % for most watched
+type_show = ['Movie','TV Show']
+Value_count = [6126,2663]
+plt.pie(Value_count,labels=type_show,autopct="%2.2f%%")
+plt.legend(title='Most watched shows on the Netflix')
+
+* Observation : Audience likes to watched mostly movies(69.70% ) over TV shows(30.30%)
+
+#### 4 Which has the highest rating Tv show or Movies?
+
+netflix_copy.head(2)
+
+netflix.groupby("type")["rating"].agg(pd.Series.mode)
+
+new_genre = netflix_copy['listed_in'].str.split(",",n = 2)
+new_genre
+
+netflix_copy['Genre 1'] = new_genre.str.get(0)
+netflix_copy['Genre 2'] = new_genre.str.get(1)
+netflix_copy['Genre 3'] = new_genre.str.get(2)
+netflix_copy.head(2)
+
+netflix_copy['Genre 1'].describe(include=all)
+
+netflix_copy['Genre 2'].describe(include=all)
+
+netflix_copy['Genre 3'].describe(include=all)
+
+netflix_copy.drop('listed_in',axis = 1,inplace = True)
+netflix_copy.head(2)
+
+netflix_copy.duplicated().sum()
+
+netflix_copy.groupby(['Genre 1'])['release_year'].count().sort_values(ascending = False)
+
+netflix_copy.groupby(['Genre 2'])['release_year'].count().sort_values(ascending = False)
+
+netflix_copy.groupby(['Genre 3'])['release_year'].count().sort_values(ascending = False)
+
+####  5. Best Month for releasing content?
+
+netflix_copy.head(2)
+
+netflix_copy.dtypes
+
+netflix_tv = netflix_copy[netflix_copy["type"] == "TV Show"]
+netflix_movies = netflix_copy[netflix_copy["type"] == "Movie"]
+
+netflix_copy["date_added"] = pd.to_datetime(netflix_copy['date_added'],format='mixed')
+netflix_copy['month_added']=netflix_copy['date_added'].dt.month
+netflix_copy['month_name_added']=netflix_copy['date_added'].dt.month_name()
+netflix_copy['year_added'] = netflix_copy['date_added'].dt.year
+
+netflix_copy.head(2)
+
+netflix_copy.month_name_added.value_counts().to_frame('Value_count')
+
+sns.countplot(x=netflix_copy['month_name_added'],orient='v')
+plt.xticks(rotation=90)
+
+netflix_content = netflix_copy[['month_added','month_name_added']].value_counts().reset_index().rename(columns = {
+    0 : 'count'}).sort_values('month_added').drop('month_added',axis=1)
+netflix_content['percent'] = netflix_content['count'].apply(lambda x : 100*x/sum(netflix_content['count']))
+
+
+netflix_tv2 = netflix_tv[['month_added','month_name_added']].value_counts().reset_index().rename(columns = {
+    0 : 'count'}).sort_values('month_added').drop('month_added',axis=1)
+netflix_tv2['percent'] = netflix_tv2['count'].apply(lambda x : 100*x/sum(netflix_tv2['count']))
+
+
+netflix_movies2 = netflix_movies[['month_added','month_name_added']].value_counts().reset_index().rename(columns = {
+    0 : 'count'}).sort_values('month_added').drop('month_added',axis=1)
+netflix_movies2['percent'] = netflix_movies2['count'].apply(lambda x : 100*x/sum(netflix_movies2['count']))
+
+t1 = go.Scatter(x=netflix_movies2['month_name_added'], y=netflix_movies2["count"], name="Movies", marker=dict(color="#a678de"))
+t2 = go.Scatter(x=netflix_tv2['month_name_added'], y=netflix_tv2["count"], name="TV Shows", marker=dict(color="#6ad49b"))
+t3 = go.Scatter(x=netflix_content['month_name_added'], y=netflix_content["count"], name="Total Contents", marker=dict(color="Brown"))
+
+
+data = [t1, t2, t3]
+
+layout = go.Layout(title="Content added over the years", legend=dict(x=0.1, y=1.1, orientation="h"))
+fig = go.Figure(data, layout=layout)
+fig.show()
+
+Observation :
+
+* July has maximum numbers of movies release. Hence July is the best month for releasing content.
+* The growth in contents are higher in the first three months and the last three months of the year.
+* Least number of contents are added in the month of February.
+
+####  6. Highest watched genres on Netflix?
+
+netflix_copy.head(2)
+
+netflix_copy['Genre 1'].describe(include=all)
+
+netflix_copy['Genre 2'].describe(include=all)
+
+netflix_copy['Genre 3'].describe(include=all)
+
+# Showing most watched genre on Pie Chart
+genre_types = ['Genre 1','Genre 2','Genre 3']
+
+Value_count = [8790,6778,3726]
+plt.pie(Value_count, labels = genre_types, autopct="%2.2f%%")
+plt.legend(title='Most watched genre on the Netflix')
+plt.show()
+
+* Obeservation: Above Pi-chart  Shows that Genre1 has watched maximum times.
+
+#### 7. Checking the time it took for movies to appear on netflix after release?
+
+netflix_copy.head(2)
+
+netflix_copy[['release_year','year_added']]
+
+netflix_copy['release_after_years'] = netflix_copy.year_added - netflix_copy.release_year
+
+#Showing displot chart for time it took for movies to get publish on netflix after release
+sns.displot(netflix_copy, x="release_after_years", binwidth=5)
+
+#### 8 Show id and director for 'Sex Education'?
+
+netflix_copy.head(2)
+
+netflix_copy[netflix_copy['title'].isin(['Sex Education'])]
+
+Obeservation: 
+    
+* For "Sex Education" the show id is s33 and No director.
+
+#### 9. All the movies that were released in year 2004?
+
+netflix_copy.head(2)
+
+netflix[(netflix['type'] == 'Movie' ) & (netflix['release_year'] == 2004)]
+
+netflix[(netflix['type'] == 'Movie' ) & (netflix['release_year'] == 2004)].shape
+
+##### Obeservation : 
+    
+* There are 55 movies released in year 2004.
+
+#### 10. Only the title of all TV shows that were released in United States only.
+
+netflix_copy.head(2)
+
+netflix_copy[(netflix_copy['type']=='TV Show') & (netflix_copy['country']=='United States')]['title']
+
+netflix_copy[(netflix_copy['type']=='TV Show') & (netflix_copy['country']=='United States')]['title'].shape
+
+Obeservation:
+    
+* There are 754 TV shows that were released in United States only.
+
+#### 11. How many Movies/TV Shows, 'Salman Khan' was cast??
+
+netflix_copy.head(2)
+
+netflix_copy[netflix_copy['cast'].str.contains('Salman Khan')]
+
+netflix_copy[netflix_copy['cast'].str.contains('Salman Khan')].shape
+
+Obeservation: 
+
+* There are 20 movies where case is Salman Khan.
+
+#### 12. How many movies got the "TV-14" rating in the India??
+
+netflix_copy.head(2)
+
+netflix_copy[(netflix_copy['type']=='Movie') & (netflix_copy['country']=='India') & (netflix_copy['rating']=='TV-14')]
+
+netflix_copy[(netflix_copy['type']=='Movie') & (netflix_copy['country']=='India') & (netflix_copy['rating']=='TV-14')].shape
+
+Observation:
+
+* 526 movies got the "TV-14" rating in India.
+
+# Business Insights : 
+
+
+1. We can see that netflix have 69% movies while 30% TV Shows
+
+2. Maximum count of ratings included TV-MA (Mature Audiences) and TV-14 (Parents strongly cautioned) for both Movies and TV shows
+17 types of ratings on netflix
+
+3. Netflix touched its peak for making movies in 2018 and TV shows in 2020
+From the above we can see that with passing years more movies are being made year by year
+The above data shows that there is a sudden increase in the creation of movies in year 2016 as compared to year 2015
+
+4. Audience likes to watched mostly movies(96.88% ) over TV shows(3.12%)
+
+5. July has maximum numbers of movies release. Hence July is the best month for releasing content.
+The growth in contents are higher in the first three months and the last three months of the year.
+Least number of contents are added in the month of February.
+
+6. Genre1 has been watched maximum times.
+
+7. For "Sex Education" the show id is s33 and No director.
+
+8. There are 55 movies released in year 2004.
+
+9. There are 754 TV shows that were released in United States only.
+
+10. There are 20 movies where case is Salman Khan.
+
+11. 526 movies got the "TV-14" rating in India.
+
+# Recommendations :
+
+1. Considering that Netflix has a higher focus on movies than TV shows, it could be beneficial for Netflix to continue investing in movie production. This can involve acquiring more movie titles, producing original movies, and partnering with renowned filmmakers and production companies to strengthen their movie catalog.
+
+2. Given that TV-MA and TV-14 ratings are popular among Netflix viewers, it would be advantageous for Netflix to continue offering a diverse range of content targeted towards mature audiences. This can involve acquiring or producing more content in these rating categories to cater to the preferences of their subscribers.
+
+3. Netflix can capitalize on the increasing trend of movie production by actively scouting for new and engaging movie projects. This can involve collaborations with talented directors, screenwriters, and actors to create high-quality movies that resonate with global audiences.
+
+4. While movies are more popular among the audience, Netflix should not neglect TV shows entirely. They can consider strategic investments in original TV show productions to cater to the segment of their subscribers who enjoy TV series. This can involve partnering with popular showrunners and creators to develop compelling and binge-worthy TV content.
+
+5. Based on the data showing the higher number of movie releases in July and the growth pattern in content additions, Netflix can prioritize the release of major movies and content expansions during the first three months and the last three months of the year. This can help maximize viewership and subscriber engagement during these periods.
+
+6. Netflix can analyze the data further to identify the most-watched genres (Genre1) and leverage this information to curate personalized recommendations for their subscribers. By understanding the viewing preferences of their audience, Netflix can enhance the user experience by suggesting relevant content from the popular genres.
+
+7. It would be beneficial for Netflix to provide complete and accurate metadata for all their content, including the show "Sex Education." Having accurate show IDs and director information helps improve the overall browsing experience for users and ensures consistent and comprehensive content information.
+
+8. Considering the number of movies released in 2004 (55), Netflix can explore highlighting classic and noteworthy movies from that year to attract cinephiles and those interested in retro content. Creating curated collections or featuring a "Throwback" category can engage viewers who appreciate films from specific years or eras.
+
+9. With a significant number of TV shows released exclusively in the United States, Netflix can continue investing in regional content production and acquisitions. By catering to specific markets, they can attract and retain subscribers in the United States and strengthen their position in the local streaming landscape.
+
+10. The presence of movies featuring Salman Khan indicates an existing fan base for the actor. Netflix can leverage this popularity by promoting and marketing these movies prominently, targeting Salman Khan's fans, and exploring collaborations for exclusive content featuring the actor.
+
+11. Given the high number of movies with a "TV-14" rating in India, Netflix can further expand its content library catering to Indian viewers. By acquiring or producing more content that aligns with Indian tastes and preferences, Netflix can strengthen its position in the Indian market and attract a larger audience.
+
+These recommendations are based on the insights provided, and it's important for Netflix to conduct in-depth market research and analysis to validate and refine these recommendations further.
+
+# Thank YOU !!
